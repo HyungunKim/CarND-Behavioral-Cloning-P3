@@ -1,8 +1,6 @@
 # **Behavioral Cloning** 
 
-## Writeup Template
-
-### You can use this file as a template for your writeup if you want to submit it as a markdown file, but feel free to use some other method and submit a pdf if you prefer.
+## Writeup
 
 ---
 
@@ -18,7 +16,7 @@ The goals / steps of this project are the following:
 
 [//]: # (Image References)
 
-[image1]: ./examples/placeholder.png "Model Visualization"
+[image1]: ./images/model_overview.png "Model Visualization"
 [image2]: ./examples/placeholder.png "Grayscaling"
 [image3]: ./examples/placeholder_small.png "Recovery Image"
 [image4]: ./examples/placeholder_small.png "Recovery Image"
@@ -37,42 +35,106 @@ The goals / steps of this project are the following:
 My project includes the following files:
 * model.py containing the script to create and train the model
 * drive.py for driving the car in autonomous mode
-* model.h5 containing a trained convolution neural network 
-* writeup_report.md or writeup_report.pdf summarizing the results
+  
+**Also includes hacky codes to use different computers for running the simulator and neural network.**
+* hybrid_drive_unity.py  
+Sends image data from unity simulator and receives steering angle from hybrid_drive_server.
+  
+* hybrid_drive_server.py  
+Receives image from hybrid_drive_unity, steering angle from human tutor when training.  
+Starts training loop when human tutor finished providing training data.
+When it's allowed to drive, it calls trained network to figure out the steering angle from received image.  
+Finally it sends out steering angle to hybrid_drive_unity (Whether or not this steering angle is calculated or provided from human tutor).
+  
+* human_tutor.py  
+Smooth out keyboard input.  
+Send steering angle to the server when training.  
+Signals server to update model parameters based on human input.  
+This helps to efficiently gather training data where the network fails
+  
+* writeup_report.md
+* `/model_check_points` containing all trained subnetworks.
+  
+Unfortunately I couldn't save my model in 1 `.h5` file.  
+The model is of `tensorflow.keras.Model` class and it had some issues in saving the model.  
+Each Part of the model had to be saved individually in `./model_check_points`. But I've provided a method to save and load these checkpoints.
+
 
 #### 2. Submission includes functional code
-Using the Udacity provided simulator and my drive.py file, the car can be driven autonomously around the track by executing 
+Using the Udacity provided simulator and my drive.py file, the car can be driven autonomously around the track.  
+Type below on the computer running the simulation.  
 ```sh
-python drive.py model.h5
+python drive.py model_check_points
+
+```  
+
+Also to use different machine for simulating and predicting and to keep human tutor in the loop...  
+(This also makes possible to use PI controller during training drives.)  
+on the machine that has neural net  
+```sh
+pytohn hybrid_drive_server.py model_check_points
 ```
+
+On the machine that runs simulation.
+```sh
+pytohn hybrid_drive_unity.py SERVER_IP:PORT
+```
+
+Tutor machine (need to be a window machine)  
+```sh
+pytohn human_tutor.py SERVER_IP:PORT
+```
+**notice Tutor machine uses [djnugent/CapnCtrl](https://github.com/djnugent/CapnCtrl)**  
+
+Keep pressing `E` on the tutor's keyboard to send image to the model and update steering angle.  
+press `Q` to take over control of the car.  
+`A` or `D` key to smoothly steer left or right respectively.  
+Keep pressing `Q` to smoothly restore steering to 0.  
+When you are in control, every time you press any key (except `E, W, S`) it records your steering angle to make sampling efficient.  
+i.e. you only press key (record) in situation where the neural network has to watch out for.  
 
 #### 3. Submission code is usable and readable
 
-The model.py file contains the code for training and saving the convolution neural network. The file shows the pipeline I used for training and validating the model, and it contains comments to explain how the code works.
+The model.py file contains the code for training and saving the convolution neural network.   
+It is use `tensorflow 2.1` but the core model is subclass of `tensorflow.keras.Model`. Thus it's still `Keras` in a way.  
+The file shows the pipeline I used for training and validating the model, and it contains comments to explain how the code works.
 
 ### Model Architecture and Training Strategy
 
 #### 1. An appropriate model architecture has been employed
+![alt text][image1]
 
-My model consists of a convolution neural network with 3x3 filter sizes and depths between 32 and 128 (model.py lines 18-24) 
+My model consists of a convolution neural network and fully connected neural network.  
+Convolution layers have 3x3 filter sizes and depths between 16 and 64 (model.py lines 58-110)  
+Fully connected layers have output shape of 256 if it is a hidden layer or 1 if it is the final output layer.
 
-The model includes RELU layers to introduce nonlinearity (code line 20), and the data is normalized in the model using a Keras lambda layer (code line 18). 
+The model includes RELU layers to introduce nonlinearity, and the data is normalized before calling the network. (model.py line 171). 
 
 #### 2. Attempts to reduce overfitting in the model
 
-The model contains dropout layers in order to reduce overfitting (model.py lines 21). 
+The model contains dropout layers in order to reduce overfitting (model.py lines 105, 107).  
+Also all the convolutional layers have L2 parameter normalization.  
 
-The model was trained and validated on different data sets to ensure that the model was not overfitting (code line 10-16). The model was tested by running it through the simulator and ensuring that the vehicle could stay on the track.
+The model was trained and validated on a data sets that i've drove the track backwards to ensure that the model was not overfitting .  
 
-#### 3. Model parameter tuning
+The model was tested by running it through the simulator and ensuring that the vehicle could stay on the track.
 
-The model used an adam optimizer, so the learning rate was not tuned manually (model.py line 25).
+#### 3. model parameter tuning
+
+The model used an adam optimizer. It's `lr` parameter is set to a small value of 0.001 to ensure it atleast finds local minimum. (model.py line 162)  
+I've actually tried to down size the input images and the model it self to make up for all additional delays between sensing and predicting. (I used two machine to send data back and forth).  
+But luckly the internet very fast, it could at least get up to 10 fps (image sending by simulator and network replying its prediction)
+Other than that there wasn't much to tune as the model drove the track very nicely.
 
 #### 4. Appropriate training data
 
-Training data was chosen to keep the vehicle driving on the road. I used a combination of center lane driving, recovering from the left and right sides of the road ... 
+Training data was chosen to keep the vehicle driving on the road. I used `hybrid_drive` strategy to make good use of PI controller.   
+First I've recorded my drive with `set_speed = 4` so that I can focus on what steering angle I should give.  
+Later it turned out my model worked only when it drived at speed 4!  
+Thus I've re recorded my drive with same `set_speed` as the model's (i.e. 9mph)  
 
-For details about how I created the training data, see the next section. 
+I've 1 lap of driving, trained it, and captured few more points where the model actually did terrible.  
+I guess this gave me data efficiency.  
 
 ### Model Architecture and Training Strategy
 
