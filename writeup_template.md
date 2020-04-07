@@ -37,17 +37,17 @@ My project includes the following files:
 * drive.py for driving the car in autonomous mode
   
 **Also includes hacky codes to use different computers for running the simulator and neural network.**
-* hybrid_drive_unity.py  
+* hybrid_drive_unity_v2.py  
 Sends image data from unity simulator and receives steering angle from hybrid_drive_server.
   
-* hybrid_drive_server.py  
+* hybrid_drive_server_v5.py  
 Receives image from hybrid_drive_unity, steering angle from human tutor when training.  
 Starts training loop when human tutor finished providing training data.
 When it's allowed to drive, it calls trained network to figure out the steering angle from received image.  
 Finally it sends out steering angle to hybrid_drive_unity (Whether or not this steering angle is calculated or provided from human tutor).
   
-* human_tutor.py  
-Smooth out keyboard input.  
+* human_tutor_v3.py  
+Smooths out keyboard input.  
 Send steering angle to the server when training.  
 Signals server to update model parameters based on human input.  
 This helps to efficiently gather training data where the network fails
@@ -134,17 +134,23 @@ Later it turned out my model worked only when it drived at speed 4!
 Thus I've re recorded my drive with same `set_speed` as the model's (i.e. 9mph)  
 
 I've 1 lap of driving, trained it, and captured few more points where the model actually did terrible.  
-I guess this gave me data efficiency.  
+I guess this gave me a big boost data efficiency.  
 
 ### Model Architecture and Training Strategy
 
 #### 1. Solution Design Approach
 
-The overall strategy for deriving a model architecture was to ...
+The overall strategy for deriving a model architecture was to extract useful features with encoder-decoder model.  
 
-My first step was to use a convolution neural network model similar to the ... I thought this model might be appropriate because ...
+I've trained encoder-decoder model to regenerate original bird-eye view input.  
+This is helpful as encoder part of the model gets more training experience.  
 
-In order to gauge how well the model was working, I split my image and steering angle data into a training and validation set. I found that my first model had a low mean squared error on the training set but a high mean squared error on the validation set. This implied that the model was overfitting. 
+Next the predict part of the model has convolutional part and fully connected part.  
+As the encoder tries to preserve the contents of the original image, I've created another convolutional layer that focuse entirely on getting the steering angle right. (predict conv)
+
+In order to gauge how well the model was working, I split my image and steering angle data into a training and validation set.   
+My training set was made with 2 machines using `hybrid_drive_server`, `hybrid_drive_unity`, `human_tutor`.  
+It consist of 
 
 To combat the overfitting, I modified the model so that ...
 
