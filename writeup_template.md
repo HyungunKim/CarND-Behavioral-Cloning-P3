@@ -16,13 +16,14 @@ The goals / steps of this project are the following:
 
 [//]: # (Image References)
 
-[image1]: ./images/model_overview.png "Model Visualization"
-[image2]: ./examples/placeholder.png "Grayscaling"
-[image3]: ./examples/placeholder_small.png "Recovery Image"
-[image4]: ./examples/placeholder_small.png "Recovery Image"
-[image5]: ./examples/placeholder_small.png "Recovery Image"
-[image6]: ./examples/placeholder_small.png "Normal Image"
-[image7]: ./examples/placeholder_small.png "Flipped Image"
+[image1]: ./out_img/model_overview.png "Model Visualization"
+[image2]: ./out_img/Warp0.PNG "Warp image 0"
+[image3]: ./out_img/hybrid_drive_strategy.png "Hybrid drive strategy"
+[image4]: ./out_img/view1.png "road_img"
+[image5]: ./out_img/bird_eye_view1.png "Bird eye view"
+[image6]: ./out_img/input1_flipped.png "Normal Image"
+[image7]: ./out_img/decoded.png "Decoded Image"
+[image7]: ./out_img/validation_result.png "Validation result"
 
 ## Rubric Points
 ### Here I will consider the [rubric points](https://review.udacity.com/#!/rubrics/432/view) individually and describe how I addressed each point in my implementation.  
@@ -36,7 +37,10 @@ My project includes the following files:
 * model.py containing the script to create and train the model
 * drive.py for driving the car in autonomous mode
   
-**Also includes hacky codes to use different computers for running the simulator and neural network.**
+**Also includes hacky codes to use different computers for running the simulator and neural network which I call hybrid strategy.**
+
+![Hybrid strategy][image3]
+
 * hybrid_drive_unity_v2.py  
 Sends image data from unity simulator and receives steering angle from hybrid_drive_server.
   
@@ -50,7 +54,7 @@ Finally it sends out steering angle to hybrid_drive_unity (Whether or not this s
 Smooths out keyboard input.  
 Send steering angle to the server when training.  
 Signals server to update model parameters based on human input.  
-This helps to efficiently gather training data where the network fails
+This helps to efficiently gather training data where the neural network fails
   
 * writeup_report.md
 * `/model_check_points` containing all trained subnetworks.
@@ -84,6 +88,7 @@ Tutor machine (need to be a window machine)
 ```sh
 pytohn human_tutor.py SERVER_IP:PORT
 ```
+
 **notice Tutor machine uses [djnugent/CapnCtrl](https://github.com/djnugent/CapnCtrl)**  
 
 Keep pressing `E` on the tutor's keyboard to send image to the model and update steering angle.  
@@ -102,7 +107,7 @@ The file shows the pipeline I used for training and validating the model, and it
 ### Model Architecture and Training Strategy
 
 #### 1. An appropriate model architecture has been employed
-![alt text][image1]
+![Model overview][image1]
 
 My model consists of a convolution neural network and fully connected neural network.  
 Convolution layers have 3x3 filter sizes and depths between 16 and 64 (model.py lines 58-110)  
@@ -115,7 +120,7 @@ The model includes RELU layers to introduce nonlinearity, and the data is normal
 The model contains dropout layers in order to reduce overfitting (model.py lines 105, 107).  
 Also all the convolutional layers have L2 parameter normalization.  
 
-The model was trained and validated on a data sets that i've drove the track backwards to ensure that the model was not overfitting .  
+The model was trained and validated on a data sets that I've drove the track backwards to ensure that the model was not overfitting .  
 
 The model was tested by running it through the simulator and ensuring that the vehicle could stay on the track.
 
@@ -142,56 +147,187 @@ I guess this gave me a big boost data efficiency.
 
 The overall strategy for deriving a model architecture was to extract useful features with encoder-decoder model.  
 
-I've trained encoder-decoder model to regenerate original bird-eye view input.  
+![Bird eye view][image2]
+
+I've trained encoder-decoder model to regenerate original bird-eye view input.(model.ipynb In [14])  
+![Bird eye view][image6]
+![Auto encoder output][image7]
 This is helpful as encoder part of the model gets more training experience.  
 
 Next the predict part of the model has convolutional part and fully connected part.  
-As the encoder tries to preserve the contents of the original image, I've created another convolutional layer that focuse entirely on getting the steering angle right. (predict conv)
+As the encoder tries to preserve the contents of the original image, I've created another convolutional layer that focuse entirely on getting the steering angle right. (predict conv)  
+Finally features extracted from convolutional layer is given to a dense layer to predict steering angle.  
 
 In order to gauge how well the model was working, I split my image and steering angle data into a training and validation set.   
+Training set consists of 1 laps in counter clockwise direction 
 My training set was made with 2 machines using `hybrid_drive_server`, `hybrid_drive_unity`, `human_tutor`.  
-It consist of 
+Validation data consists 1 laps clockwise direciton with all left, center, right camera images.  
+Thus my validation set is made from normal `training mod` of udacity simulator, but I've tried to drive as close to 9mph as possible.
 
-To combat the overfitting, I modified the model so that ...
+To combat the overfitting, I modified the model so that it had drop out on the fully connected layers, kernel regularization on all the convolutional layers.  
 
-Then I ... 
+During the training loop I've randomly flipped the image and the sign of the steering angle.  
 
-The final step was to run the simulator to see how well the car was driving around track one. There were a few spots where the vehicle fell off the track... to improve the driving behavior in these cases, I ....
+The final step was to run the simulator to see how well the car was driving around track one. There were a few spots where the vehicle fell off the track consistently.  
+I've took over where the model failed horribly and captured how to handle this scenario (whith exagerated steering) and retrained the model with this data included.  
 
 At the end of the process, the vehicle is able to drive autonomously around the track without leaving the road.
 
 #### 2. Final Model Architecture
 
-The final model architecture (model.py lines 18-24) consisted of a convolution neural network with the following layers and layer sizes ...
+![Model overview][image1]  
 
-Here is a visualization of the architecture (note: visualizing the architecture is optional according to the project rubric)
+The final model architecture (model.py lines 58-108) details are listed below.
 
-![alt text][image1]
+```
+Model: Encoder
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+conv2d (Conv2D)              (None, 160, 320, 16)      448       
+_________________________________________________________________
+max_pooling2d (MaxPooling2D) (None, 80, 160, 16)       0         
+_________________________________________________________________
+conv2d_1 (Conv2D)            (None, 80, 160, 32)       4640      
+_________________________________________________________________
+max_pooling2d_1 (MaxPooling2 (None, 40, 80, 32)        0         
+_________________________________________________________________
+conv2d_2 (Conv2D)            (None, 40, 80, 32)        9248      
+_________________________________________________________________
+max_pooling2d_2 (MaxPooling2 (None, 20, 40, 32)        0         
+_________________________________________________________________
+conv2d_3 (Conv2D)            (None, 20, 40, 64)        18496     
+_________________________________________________________________
+max_pooling2d_3 (MaxPooling2 (None, 10, 20, 64)        0         
+_________________________________________________________________
+conv2d_4 (Conv2D)            (None, 10, 20, 64)        36928     
+_________________________________________________________________
+max_pooling2d_4 (MaxPooling2 (None, 5, 10, 64)         0         
+=================================================================
+Total params: 69,760
+Trainable params: 69,760
+Non-trainable params: 0
+_____________________________
+```
+```
+Model: Decoder
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+up_sampling2d (UpSampling2D) (None, None, None, 64)    0         
+_________________________________________________________________
+conv2d_5 (Conv2D)            (None, None, None, 64)    36928     
+_________________________________________________________________
+up_sampling2d_1 (UpSampling2 (None, None, None, 64)    0         
+_________________________________________________________________
+conv2d_6 (Conv2D)            (None, None, None, 64)    36928     
+_________________________________________________________________
+up_sampling2d_2 (UpSampling2 (None, None, None, 64)    0         
+_________________________________________________________________
+conv2d_7 (Conv2D)            (None, None, None, 32)    18464     
+_________________________________________________________________
+up_sampling2d_3 (UpSampling2 (None, None, None, 32)    0         
+_________________________________________________________________
+conv2d_8 (Conv2D)            (None, None, None, 32)    9248      
+_________________________________________________________________
+up_sampling2d_4 (UpSampling2 (None, None, None, 32)    0         
+_________________________________________________________________
+conv2d_9 (Conv2D)            (None, None, None, 3)     867       
+=================================================================
+Total params: 102,435
+Trainable params: 102,435
+Non-trainable params: 0
+```
+```
+Model: predict_conv
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+conv2d_5 (Conv2D)            (None, 5, 10, 64)         36928     
+_________________________________________________________________
+conv2d_6 (Conv2D)            (None, 5, 10, 64)         36928     
+_________________________________________________________________
+max_pooling2d_5 (MaxPooling2 (None, 2, 5, 64)          0         
+_________________________________________________________________
+conv2d_7 (Conv2D)            (None, 2, 5, 128)         73856     
+_________________________________________________________________
+conv2d_8 (Conv2D)            (None, 2, 5, 128)         147584    
+_________________________________________________________________
+global_max_pooling2d (Global (None, 128)               0         
+=================================================================
+Total params: 295,296
+Trainable params: 295,296
+Non-trainable params: 0
+```
+```
+Model: predict (fully connected)
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+dense (Dense)                (None, 256)               33024     
+_________________________________________________________________
+dropout (Dropout)            (None, 256)               0         
+_________________________________________________________________
+dense_1 (Dense)              (None, 256)               65792     
+_________________________________________________________________
+dropout_1 (Dropout)          (None, 256)               0         
+_________________________________________________________________
+dense_2 (Dense)              (None, 1)                 257       
+=================================================================
+Total params: 99,073
+Trainable params: 99,073
+Non-trainable params: 0
+```
 
 #### 3. Creation of the Training Set & Training Process
 
-To capture good driving behavior, I first recorded two laps on track one using center lane driving. Here is an example image of center lane driving:
+To capture good driving behavior, I first recorded one laps on track one using center lane driving using hybrid strategy. Here is an example image of center lane driving:
 
-![alt text][image2]
-
-I then recorded the vehicle recovering from the left side and right sides of the road back to center so that the vehicle would learn to .... These images show what a recovery looks like starting from ... :
-
-![alt text][image3]
 ![alt text][image4]
-![alt text][image5]
 
-Then I repeated this process on track two in order to get more data points.
+I then recorded the vehicle recovering from places where the previous model failed and retrained with these data included.   
 
 To augment the data sat, I also flipped images and angles thinking that this would ... For example, here is an image that has then been flipped:
 
+![alt text][image5]
 ![alt text][image6]
-![alt text][image7]
 
 Etc ....
 
-After the collection process, I had X number of data points. I then preprocessed this data by ...
+After the collection process, I had 1176 number of data points. I then preprocessed this data by Warping to bird-eye view, and rescaleing (model.py line 171)
 
+```
+  Training data
+	steering
+count 	1176.000000
+mean 	-0.047226
+std 	0.103617
+min 	-0.488173
+25% 	-0.086111
+50% 	-0.030634
+75% 	-0.004934
+max 	0.411923
+```
+Than I've recorded validation data in `Training mode` of the simulator.  
+Drove one laps clockwise (opposite of training data) while trying to maintain 9 mph. 
 
-I finally randomly shuffled the data set and put Y% of the data into a validation set. 
+```
+  Validation data
+	steering 	throttle 	break 	speed
+count 	2797.000000 	2797.000000 	2797.0 	2797.000000
+mean 	0.025964 	0.074298 	0.0 	9.065184
+std 	0.088532 	0.082401 	0.0 	0.304721
+min 	-0.424528 	0.000000 	0.0 	7.608748
+25% 	-0.009434 	0.000000 	0.0 	8.876772
+50% 	0.028302 	0.043154 	0.0 	9.034074
+75% 	0.066038 	0.143944 	0.0 	9.194744
+max 	0.301887 	0.331947 	0.0 	10.437590
+```
 
-I used this training data for training the model. The validation set helped determine if the model was over or under fitting. The ideal number of epochs was Z as evidenced by ... I used an adam optimizer so that manually training the learning rate wasn't necessary.
+It turned out my training data was smaller in size than my validation data.  
+The training, validation result looked fantastic.(model.ipynb or model.html In[13], Out[13])  
+![Validation result][image7]
+
+My model was trained with very small dataset and even without left, right camera image.  
+Yet it did so well on all camera image.
+
