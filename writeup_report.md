@@ -40,7 +40,8 @@ My project includes the following files:
 **Also includes hacky codes to use different computers for running the simulator and neural network which I call hybrid strategy.**
 
 ![Hybrid strategy][image3]
-
+* model.ipynb to show working codes  
+* model.html to show ipynb in html format.    
 * hybrid_drive_unity_v2.py  
 Sends image data from unity simulator and receives steering angle from hybrid_drive_server.
   
@@ -62,7 +63,6 @@ This helps to efficiently gather training data where the neural network fails
 Unfortunately I couldn't save my model in 1 `.h5` file.  
 The model is of `tensorflow.keras.Model` class and it had some issues in saving the model.  
 Each Part of the model had to be saved individually in `./model_check_points`. But I've provided a method to save and load these checkpoints.
-
 
 #### 2. Submission includes functional code
 Using the Udacity provided simulator and my drive.py file, the car can be driven autonomously around the track.  
