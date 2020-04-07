@@ -28,7 +28,7 @@ import h5py
 
 ##################** Socket for Net_Train Server**##################
 HEADER_LENGTH = 10
-IP = "203.246.114.231"
+IP = ""
 PORT = 1234
 
 my_username = "car"
