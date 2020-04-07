@@ -8,7 +8,7 @@ import time
 from capnctrl import cap, ctrl
 
 HEADER_LENGTH = 10
-IP = "203.246.114.231"
+IP = ""
 PORT = 1234
 
 my_username = 'tutor'
