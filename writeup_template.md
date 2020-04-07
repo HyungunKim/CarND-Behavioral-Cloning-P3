@@ -23,7 +23,7 @@ The goals / steps of this project are the following:
 [image5]: ./out_img/bird_eye_view1.png "Bird eye view"
 [image6]: ./out_img/input1_flipped.png "Normal Image"
 [image7]: ./out_img/decoded.png "Decoded Image"
-[image7]: ./out_img/validation_result.png "Validation result"
+[image8]: ./out_img/validation_result.png "Validation result"
 
 ## Rubric Points
 ### Here I will consider the [rubric points](https://review.udacity.com/#!/rubrics/432/view) individually and describe how I addressed each point in my implementation.  
@@ -326,7 +326,7 @@ max 	0.301887 	0.331947 	0.0 	10.437590
 
 It turned out my training data was smaller in size than my validation data.  
 The training, validation result looked fantastic.(model.ipynb or model.html In[13], Out[13])  
-![Validation result][image7]
+![Validation result][image8]
 
 My model was trained with very small dataset and even without left, right camera image.  
 Yet it did so well on all camera image.
